@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	<style>
+		html,body,main,ul,li{
+				margin:0;
+				padding:0;			
+		}
+		html,body,main{
+			height: 100%;
+			width:100%;
+		}
+		main{
+			display: flex;
+		}
+		.l,.r{
+			flex: 1;
+		}
+		.l{
+			background-color: gray;
+		}
+		.r{
+			background-color: green;
+		}
+		#list>li{
+			text-indent:2rem;
+			display: block;
+			height: 1.5rem;
+			color: black;
+			background-color:white;
+			margin-top: 0.5rem;
+			cursor:pointer;
+		}
+	</style>
+	<script>
+		onload=function(){
+			var l=document.querySelector('.l');
+			var r=document.querySelector('.r');	
+			var list=document.querySelector('#list');	
+			var player=document.querySelector('#player');
+			new box(l,'mp3',function(wordArr){
+				 wordArr.forEach(function(current,index){
+				 	var li=document.createElement('li');
+				 	li.innerText=current.name;
+				 	li.onclick=function(){
+				 		var fr = new FileReader();
+				 		fr.readAsDataURL(wordArr[index]);
+				 		fr.onload=function(){
+				 			player.src=this.result;
+			 		}
+				 	};
+				 	list.appendChild(li);
+
+				 });
+			});
+			player.oncanplay=function(){
+				this.play();
+			};
+		}
+		function box(ele,type,callback){/*新建对象*/
+			this.ele=ele;
+			this.type=type;
+			this.callback=callback;
+			this.wordArr=[];
+			this.bind=function(){
+				var $this=this;
+				this.ele.addEventListener('dragover',function(e){
+					e.preventDefault();
+					this.style.opacity=0.5;
+				},false);
+				this.ele.addEventListener('dragleave',function(e){
+					e.preventDefault();
+					this.style.opacity=1;
+				},false);
+				this.ele.addEventListener('drop',function(e){
+					e.preventDefault();
+					this.style.opacity=1;					
+					var files = e.dataTransfer.files; //获取到drop下来的文件
+					for (var i = 0; files[i]; i++) {
+						if (files[i].type.split("/")[1]==$this.type) {
+							$this.wordArr.push(files[i]);						
+						}
+					}
+					$this.callback($this.wordArr);
+				},false);
+			};
+			this.bind();
+		}
+		
+
+	</script>
+</head>
+<body>
+	<main>
+	<audio id='player'></audio>
+		<section class="l">
+			<ul id="list">
+				
+			</ul>
+		</section>
+		<section class="r"></section>
+	</main>
+</body>
+</html>

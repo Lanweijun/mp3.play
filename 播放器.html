@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style type='text/css'>
+			body,html{
+				margin:0px;
+				padding:0px;
+				margin-top:10px;
+			}
+			.big{
+				margin:auto;
+				width:1200px;
+				height:600px;
+				border:3px solid #0066CC; 
+			}
+			.list,.lrc{
+				width:398px;
+				height:297px;
+				background:#CCCCFF;
+				border:1px solid #FF99CC;
+			}
+			.d1,.d2,.wordBox{
+				width:398px;
+				float:left;
+				height:597px;
+				border:1px solid #99FF99;
+				text-align:center;
+			}
+			.playBox{
+				width:398px;
+				height:300px;
+				background:#CCFF66;
+				margin-top: 160px;
+				text-align:center;
+				font-size:30px;
+				color:#171717;
+				line-height:300px;
+			}
+			.wordBox{
+				background:#CCFFCC;
+				font-size:18px;
+				color:black;
+				overflow:hidden;
+				line-height:20px;
+			}
+		</style>
+		<script type='text/javascript'>
+			onload=function(){
+				var list = document.querySelector('.list');
+				var lrc = document.querySelector('.lrc');
+				var playBox = document.querySelector('.playBox');
+				var wordBox = document.querySelector('.wordBox');
+				var change = document.querySelector('.change');
+				var mp3 = document.querySelector('#mp3');
+				var num = 100;
+				var listSpan = document.querySelectorAll('.list span');
+				//[歌名 , Mp3]数组   [歌名 , files]数组    src地址数组  歌词数组
+				var playArr = [] , wordArr = [] ,srcArr = [] ,tmpArr = [] , Barr = [] ;
+				//时间转换
+				var timeProcess = function(time){
+					var minute  = ~~(time/60);
+					var seconds = ~~(time%60);
+					return (minute >= 10 ? minute : "0"+minute) + ":" + (seconds>=10 ? seconds : "0"+seconds);
+				}
+				//拖拽 事件 读取
+				setDrop = function(node,arr,arr2){
+					node.ondragover=function(e){
+						e.preventDefault();
+					}
+					node.ondrop=function(e){
+						e.preventDefault();
+						var files = e.dataTransfer.files;
+						for(var i = 0;files[i];i++){
+							var type = files[i].type.split('/')[1];
+							//MP3文件
+							if(type == 'mp3'){
+								list.innerHTML+= '<span name='+files[i].name.split('.')[0]+'>'+files[i].name.split('.')[0]+'</span><br>';
+								playReady();
+								arr.push([files[i].name.split('.')[0],files[i]]);
+							}
+							//歌词
+							if(type == 'plain'){
+								lrc.innerHTML += '<span name='+files[i].name.split('.')[0]+'>'+files[i].name.split('.')[0]+'</span><br>';
+								var fileReader = new FileReader();
+								fileReader.readAsText(files[i],'GBK');
+								fileReader.addEventListener('load',function(){
+									tmpArr.push(this.result);
+									wordReady();
+								});
+								arr2.push([files[i].name.split('.')[0],type]);
+							}
+						}
+					}
+					
+				}
+				//给playBox绑拖拽事件
+				setDrop(playBox,playArr,wordArr);
+				//动态给歌名绑定点击事件
+				playReady = function(){
+					Array.prototype.forEach.call(document.querySelectorAll('.list span'),function(current,index){
+						current.onclick = function(){
+								console.log('here')
+								var fileReader = new FileReader();
+									fileReader.readAsDataURL(playArr[index][1]);
+									fileReader.addEventListener('load',function(){
+										mp3.src = this.result ;
+									});
+									fileReader.onprogress = function(){
+										progress.value = event.loaded;
+									}
+							mp3.addEventListener('canplay',function(){
+								//获取时间总长
+								var duration = mp3.duration;
+								var state = "播放中";
+								mp3.play();
+								for(var i = 0;wordArr[i];i++){
+								console.log(current.innerText)
+								//判断歌名与歌词相同时
+									if(current.innerText == wordArr[i][0]){
+										console.log(current.innerText == wordArr[i][0])
+										var tmpWord = [];
+										Barr = [];
+										tmpArr[i].split('\n').forEach(function(current){
+										wordBox.innerHTML = '';
+										if(/^\[\d{2}:\d{2}\.\d{2}\]\w*/.test(current)){
+											var tmpStr = current.split(']')[0].slice(1);
+											var time = tmpStr.split(':')[0]*60+tmpStr.split(':')[1]*1;
+											var word = current.split(']')[1];
+											tmpWord.push(word);
+											Barr.push([time,word]);
+										}
+										});
+										 for(var k = 0;tmpWord[k];k++){
+											wordBox.innerHTML += '<p data-time =' +Barr[k][0]+'>' + tmpWord[k] +'</p>';
+										 }
+										 document.querySelectorAll('.wordBox p')[0].style['margin-top'] = num +'px';
+									}
+								}
+								//playBox 点击事件
+								playBox.onclick = function(){
+									//是否暂停 true or false
+									if(mp3.paused){
+										mp3.play(); //audio播放方法
+										state = "播放中";
+									}else{
+										mp3.pause(); //audio暂停方法
+										state = "暂停中";
+									}
+								}
+								mp3.ontimeupdate = function(){
+								//currentTime 获取到当前时间  改变当前播放段落字体
+								playBox.innerText = state + timeProcess(duration-mp3.currentTime);
+								Barr.forEach(function(current,index){
+									//判断当前播放的歌词并改样式 
+									if(parseInt(current[0]) == parseInt(mp3.currentTime)){
+										var node = document.querySelector("p[data-time ='"+current[0]+"']");
+										node.style['font-size']= 25+'px';
+										node.style.color = '#CC00CC' ;
+										num -= 10;
+										document.querySelectorAll('.wordBox p')[0].style['margin-top'] = num +'px';
+										// 改回样式
+									if(	document.querySelectorAll('.wordBox p')[index-1]){
+										document.querySelectorAll('.wordBox p')[index-1].style['font-size']=18+'px';
+										document.querySelectorAll('.wordBox p')[index-1].style.color='black';
+									}
+									}
+								});
+								}
+								mp3.onended= function(){
+									playBox.innerText = "播放完毕 :)";	
+									index ++;
+									num = 100;
+								}
+							},false)
+						}
+					});
+				}
+				//动态给歌词绑定点击事件
+				wordReady = function(){
+					Array.prototype.forEach.call(document.querySelectorAll('.lrc span'),function(current,index){
+						current.onclick = function(){
+							var tmpWord = [];
+							Barr = [];
+							tmpArr[index].split('\n').forEach(function(current){
+							wordBox.innerHTML = '';
+							if(/^\[\d{2}:\d{2}\.\d{2}\]\w*/.test(current)){
+								var tmpStr = current.split(']')[0].slice(1);
+								var time = tmpStr.split(':')[0]*60+tmpStr.split(':')[1]*1;
+								var word = current.split(']')[1];
+								tmpWord.push(word);
+								Barr.push([time,word]);
+							}
+							});
+						for(var i = 0;tmpWord[i];i++){
+							wordBox.innerHTML += '<p data-time =' +Barr[i][0]+'>' + tmpWord[i] +'</p>';
+						}
+						}
+					});
+				}
+			}
+		</script>
+	</head>
+	<body>
+		<audio src='' id='mp3'></audio>
+		<div class='big'>
+			<div class='d1'>
+				<div class='list'>
+					<h3>歌曲清单</h3>
+				</div>
+				<div class='lrc'>
+					<h3>歌词清单</h3>
+				</div>
+			</div>
+			<div class='d2'>
+				<div class='playBox' multiple>
+				</div>
+				<progress id="progress" value="0"></progress>
+			</div>
+			<div class='wordBox' multiple>
+			</div>
+		</div>
+	</body>
+</html>
